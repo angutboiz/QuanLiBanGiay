@@ -53,17 +53,26 @@ namespace QuanLiBanGiay
 
         private void btnAddSP_Click(object sender, EventArgs e)
         {
-            int indexIDTheloai = cb_TheLoai.SelectedIndex;
-            if (txbTen.Text == "" && txbSoLuongTonKho.Text == "" && txbGia.Text == "" && txbDesc.Text == "" && cbSize.Text == "")
+            int indexIDTheloai = cb_TheLoai.SelectedIndex + 1;
+            if (cb_TheLoai.SelectedIndex < 0)
             {
-                MessageBox.Show("Vui lòng nhập đầy đủ", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                MessageBox.Show("Vui lòng chọn thể loại", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+
             }
             else
             {
-                string sql = "INSERT INTO PRODUCT (PRODUCTNAME,Description,SIZE,PRICE,StockQuantity,CategoryID) VALUES (N'" + txbTen.Text + "',N'" + txbDesc.Text + "','" + cbSize.Text + "','" + txbGia.Text + "','" +txbSoLuongTonKho.Text+ "','"+ indexIDTheloai + "')";
+                if (txbTen.Text == "" && txbSoLuongTonKho.Text == "" && txbGia.Text == "" )
+                {
+                    MessageBox.Show("Vui lòng nhập đầy đủ", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                }
+                else
+                {
+                    string sql = "INSERT INTO PRODUCT (PRODUCTNAME,Description,SIZE,PRICE,StockQuantity,CategoryID) VALUES (N'" + txbTen.Text + "',N'" + txbDesc.Text + "','" + cbSize.Text + "','" + txbGia.Text + "','" + txbSoLuongTonKho.Text + "','" + indexIDTheloai + "')";
 
-                Query(sql, "Thêm thành công giày");
-             }
+                    Query(sql, "Thêm thành công giày");
+                }
+            }
+            
            
         }
 
@@ -133,7 +142,7 @@ namespace QuanLiBanGiay
 
 
             //bảng xuất giày
-            string sqlTableXuatGiay = "SELECT Product.PRODUCTID,PRODUCTNAME,o.Quantity,PRICE FROM PRODUCT JOIN OrderDetail o ON Product.PRODUCTID = o.ProductID where isdelete = 0";
+            string sqlTableXuatGiay = "SELECT Product.PRODUCTID,PRODUCTNAME,StockQuantity,PRICE FROM PRODUCT where isdelete = 0";
             FillDataTable(sqlTableXuatGiay, dgvXuatGiay);
 
             //bảng khôi phục
@@ -152,29 +161,42 @@ namespace QuanLiBanGiay
             //bảng chi tiết
             string sqlTableDetail = @"
                                  SELECT 
-                                     cust.CustomerID,
-                                     cust.Fullname,
-                                     cust.Email,
-                                     cust.PhoneNumber,
-                                     cust.Address,
-                                     p.ProductName,
-                                     p.Description,
-                                     p.Size,
-                                     p.Price,
-                                     c.CategoryName,
-                                     o.OrderDate,
-                                     o.TotalAmount,
-                                     od.Quantity,
-                                     pay.PaymentMethod,
-                                     pay.PaymentDate
-                                 FROM Customer cust
-                                 JOIN Orderr o ON cust.CustomerID = o.CustomerID
-                                 JOIN OrderDetail od ON o.OrderID = od.OrderID
-                                 JOIN Product p ON od.ProductID = p.ProductID
-                                 JOIN Category c ON p.CategoryID = c.CategoryID
-                                 JOIN Payment pay ON o.OrderID = pay.OrderID";
+                                    cust.CustomerID,
+                                    cust.Fullname,
+                                    cust.Email,
+                                    cust.PhoneNumber,
+                                    cust.Address,
+                                    p.ProductName,
+                                    p.Description,
+                                    p.Size,
+                                    p.Price,
+                                    c.CategoryName,
+                                    od.Quantity,
+                                    od.TotalAmount,
+                                    pay.PaymentMethod,
+                                    pay.PaymentDate
+                                FROM Customer cust
+                                JOIN OrderDetail od ON cust.CustomerID = od.CustomerID
+                                JOIN Product p ON od.ProductID = p.ProductID
+                                JOIN Category c ON p.CategoryID = c.CategoryID
+                                JOIN Payment pay ON od.OrderDetailID = pay.OrderDetailID";
 
             FillDataTable(sqlTableDetail,dgvSort);
+
+            //bảng thanh toán
+            string sqlPayment = @"SELECT 
+                                od.OrderDetailID,
+                                c.Fullname,
+                                p.ProductName,
+                                od.Quantity,
+                                od.TotalAmount,
+                                c.PhoneNumber,
+                                od.OrderDate
+                            FROM OrderDetail od
+                            JOIN Customer c ON od.CustomerID = c.CustomerID
+                            JOIN Product p ON od.ProductID = p.ProductID
+                            WHERE od.StatusPayment = 0;";
+            FillDataTable(sqlPayment, dgvThanhToan);
         }
         private void FillDataTable(string query, DataGridView table)
         {
@@ -266,7 +288,7 @@ namespace QuanLiBanGiay
 
         private void btnThemLoaiGiay_Click(object sender, EventArgs e)
         {
-            string sqlQuery = "INSERT INTO CATEGORY (CATEGORYNAME) VALUES ('"+ txbLoaiGiay.Text + "')";
+            string sqlQuery = "INSERT INTO CATEGORY (CATEGORYNAME) VALUES (N'"+ txbLoaiGiay.Text + "')";
             Query(sqlQuery, "Thêm loại giày: "+ txbLoaiGiay.Text + " thành công");
         }
 
@@ -292,7 +314,7 @@ namespace QuanLiBanGiay
                 cb_SuaSize.Text = dt.Rows[row][3].ToString();
                 txbSuaGia.Text = dt.Rows[row][4].ToString();
                 txbSuaSL.Text = dt.Rows[row][5].ToString();
-                cbSuaTheLoai.SelectedIndex = int.Parse(dt.Rows[row][6].ToString()) - 1;
+                cbSuaTheLoai.SelectedIndex = int.Parse(dt.Rows[row][6].ToString());
 
               
                 cnn.Close();
@@ -379,9 +401,11 @@ namespace QuanLiBanGiay
 
         private void btnSuaLoaiGiay_Click(object sender, EventArgs e)
         {
+            cb_TheLoai.Items.Clear();
+
             try
             {
-                string sqlQuery = "UPDATE category SET CategoryName ='" + txbLoaiGiay.Text + "' where categoryID ='" + lbID.Text + "'";
+                string sqlQuery = "UPDATE category SET CategoryName =N'" + txbLoaiGiay.Text + "' where categoryID ='" + lbID.Text + "'";
            
                 Query(sqlQuery, "Sửa thành công loại giày: " + txbLoaiGiay.Text);
             }
@@ -405,35 +429,36 @@ namespace QuanLiBanGiay
 
         private void btnXGBill_Click(object sender, EventArgs e)
         {
-            if (txbXGSanPham.Text == "" && txbXGSoLuong.Text == "" && txbXGSoTien.Text == "" && cbKH.Text =="")
+            int customID = cbKH.SelectedIndex + 1 ;
+
+            if (cbKH.SelectedIndex < 0) 
             {
-                MessageBox.Show("Lui lòng nhập thông tin mua hàng", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                MessageBox.Show("Vui lòng chọn khách hàng", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                cbKH.Focus();
             }
             else
             {
-                //tạo khách hàng
-                string sqlQuery = "INSERT INTO customer (Fullname,Email,PhoneNumber,Address) VALUES " +
-               "(N'" + txbXGKhachHang.Text + "','" + txbXGEmail.Text + "','" + txbXGSDT.Text + "',N'" + txbXGAddress.Text + "')";
+                if (txbXGSanPham.Text == "" && txbXGSoLuong.Text == "" && txbXGSoTien.Text == "" && cbKH.Text =="")
+                {
+                    MessageBox.Show("Lui lòng nhập thông tin mua hàng", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                    
+                }
+                else
+                {
 
-                Query(sqlQuery,"");
+                    txbXGSoTien.Text = (int.Parse(lbXGSoTien.Text) * int.Parse(txbXGSoLuong.Text)).ToString();
 
+                    //tạo đơn hàng
+                    string sqlCreateOrder = "INSERT INTO OrderDetail (CustomerID, ProductID, Quantity, OrderDate, UnitPrice, TotalAmount) " +
+                        "VALUES ('" + customID + "','"+int.Parse(lbXGID.Text)+"','"+int.Parse(txbXGSoLuong.Text)+"','" 
+                        + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + "','"+int.Parse(lbXGSoTien.Text)+"','" + int.Parse(txbXGSoTien.Text) + "')";
 
-                //tạo đơn hàng
-                string sqlCreateOrder = "INSERT INTO Order (CustomerID, OrderDate, TotalAmount) " +
-                    "VALUES (N'" + txbTen.Text + "',N'" + txbDesc.Text + "','" + cbSize.Text + "','" + txbGia.Text + "'" +
-                    ",'" + txbSoLuongTonKho.Text + "')";
+                    Query(sqlCreateOrder, "Tạo đơn thành công");
 
-                Query(sqlCreateOrder, "Thêm thành công giày");
-
-
-                string sql = "INSERT INTO OrderDetail (OrderID,ProductID,Quantity,UnitPrice) " +
-                    "VALUES (N'" + txbTen.Text + "',N'" + txbDesc.Text + "','" + cbSize.Text + "','" + txbGia.Text + "'" +
-                    ",'" + txbSoLuongTonKho.Text + "')";
-
-                Query(sql, "Thêm thành công giày");
-
-                //giảm số lượng hàng tồn khi đặt hàng thành công
-                UpdateStockQuantity(int.Parse(lbXGID.Text), int.Parse(txbXGSoLuong.Text)); 
+                    //giảm số lượng hàng tồn khi đặt hàng thành công
+                    UpdateStockQuantity(int.Parse(lbXGID.Text), int.Parse(txbXGSoLuong.Text));
+                    Reload();
+                }
             }
         }
 
@@ -473,7 +498,7 @@ namespace QuanLiBanGiay
             {
                 cnn = new SqlConnection(connetionString);
                 cnn.Open();
-                string sql = "SELECT Product.PRODUCTID,PRODUCTNAME,o.Quantity,PRICE FROM PRODUCT JOIN OrderDetail o ON Product.PRODUCTID = o.ProductID where isdelete = 0";
+                string sql = "SELECT PRODUCTID,PRODUCTNAME,StockQuantity,PRICE FROM PRODUCT where isdelete = 0";
 
                 da = new SqlDataAdapter(sql, cnn);
                 dt = new DataTable();
@@ -482,7 +507,8 @@ namespace QuanLiBanGiay
                 int row = e.RowIndex;
                 lbXGID.Text = dt.Rows[row][0].ToString();
                 txbXGSanPham.Text = dt.Rows[row][1].ToString();
-                txbXGSoTien.Text = dt.Rows[row][3].ToString();
+                lbXGSoTien.Text = dt.Rows[row][3].ToString();
+                lbXGTonKho.Text = dt.Rows[row][2].ToString();
 
 
 
@@ -556,21 +582,147 @@ namespace QuanLiBanGiay
 
         private void cbLocTheLoai_SelectedIndexChanged(object sender, EventArgs e)
         {
-            (dgvXuatGiay.DataSource as DataTable).DefaultView.RowFilter = string.Format("CategoryName LIKE '%{0}%'", cbLocTheLoai.Text);
+            (dgvSort.DataSource as DataTable).DefaultView.RowFilter = string.Format("SoftCategory LIKE '%{0}%'", cbLocTheLoai.Text);
         }
 
         private void dgvLoaiGiay_RowEnter(object sender, DataGridViewCellEventArgs e)
         {
-            /*string sqlTableCategory = "SELECT CATEGORYID,CategoryName from category";
-            FillDataTable(sqlTableCategory, dgvLoaiGiay);
-            int row = e.RowIndex;
-            lbIDLoaiGiay.Text = dt.Rows[row][0].ToString();
-            txbLoaiGiay.Text = dt.Rows[row][1].ToString();*/
+            try
+            {
+                cnn = new SqlConnection(connetionString);
+                cnn.Open();
+
+                string sql = "SELECT CATEGORYID,CategoryName from category";
+
+
+
+                da = new SqlDataAdapter(sql, cnn);
+                dt = new DataTable();
+                da.Fill(dt);
+
+
+                int row = e.RowIndex;
+                lbIDLoaiGiay.Text = dt.Rows[row][0].ToString();
+                txbLoaiGiay.Text = dt.Rows[row][1].ToString();
+
+
+                cnn.Close();
+
+            }
+            catch (Exception es)
+            {
+                MessageBox.Show(es.ToString());
+
+            }
+           
+            
         }
 
         private void txbXGKhachHang_TextChanged(object sender, EventArgs e)
         {
             btnTaoKH.Text = "Tạo KH: "+ txbXGKhachHang.Text;
+        }
+
+        private void btnTaoKH_Click(object sender, EventArgs e)
+        {
+           
+            if (txbXGKhachHang.Text == "" && txbXGSDT.Text == "" )
+            {
+                MessageBox.Show("Vui lòng nhập thông tin khách hàng đầy đủ", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+            }
+            else
+            {
+                //tạo khách hàng
+                string sqlQuery = "INSERT INTO customer (Fullname,Email,PhoneNumber,Address) VALUES " +
+               "(N'" + txbXGKhachHang.Text + "','" + txbXGEmail.Text + "','" + txbXGSDT.Text + "',N'" + txbXGAddress.Text + "')";
+
+                Query(sqlQuery, "Tạo khách hàng " + txbXGKhachHang.Text + " thành công");
+
+            }
+        }
+
+        private void txbXGSoLuong_TextChanged(object sender, EventArgs e)
+        {
+            if (int.Parse(txbXGSoLuong.Text) > int.Parse(lbXGTonKho.Text))
+            {
+                MessageBox.Show("Số lượng "+ txbXGSanPham.Text+" chỉ có ["+lbXGTonKho.Text+"] sản phẩm\nBạn đặt vượt quá số lượng còn trong kho", "Chú ý", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                txbXGSoLuong.Text = "1";
+            }
+            else
+            {
+
+                txbXGSoTien.Text = (int.Parse(lbXGSoTien.Text) * int.Parse(txbXGSoLuong.Text)).ToString();
+            }
+
+        }
+
+        private void txbXGSoLuong_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            if (!(e.KeyChar >= '0' && e.KeyChar <= '9' || e.KeyChar == (char)8))
+                e.Handled = true;
+        }
+
+        private void dgvThanhToan_RowEnter(object sender, DataGridViewCellEventArgs e)
+        {
+            try
+            {
+                cnn = new SqlConnection(connetionString);
+                cnn.Open();
+
+                string sql = @"SELECT 
+                                od.OrderDetailID,
+                                c.Fullname,
+                                p.ProductName,
+                                od.Quantity,
+                                od.TotalAmount,
+                                c.PhoneNumber,
+                                od.OrderDate
+                            FROM OrderDetail od
+                            JOIN Customer c ON od.CustomerID = c.CustomerID
+                            JOIN Product p ON od.ProductID = p.ProductID
+                            WHERE od.StatusPayment = 0;";
+
+
+                da = new SqlDataAdapter(sql, cnn);
+                dt = new DataTable();
+                da.Fill(dt);
+
+
+                int row = e.RowIndex;
+                lbTTID.Text = dt.Rows[row][0].ToString();
+                txbTTName.Text = dt.Rows[row][1].ToString();
+                txbTTSP.Text = dt.Rows[row][2].ToString();
+
+
+                cnn.Close();
+
+            }
+            catch (Exception es)
+            {
+                MessageBox.Show(es.ToString());
+
+            }
+
+        }
+
+        private void btnThanhToan_Click(object sender, EventArgs e)
+        {
+
+            string sqlQuery = "insert into payment (OrderDetailID, PaymentMethod, PaymentDate) VALUES ('"+ lbTTID.Text + "',N'"+
+                cbPaymentMethod.Text+"','"+ DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + "')";
+ 
+
+            Query(sqlQuery,"");
+
+            string sql = "UPDATE OrderDetail SET StatusPayment = 1 WHERE OrderDetailID ='" + lbTTID.Text + "'";
+            Query(sql, "Thanh toán thành công KH: " + txbTTName.Text);
+
+        }
+
+        private void cbSoftSize_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            (dgvSort.DataSource as DataTable).DefaultView.RowFilter = string.Format("SoftSize LIKE '%{0}%'", cbLocTheLoai.Text);
+
         }
     }
 }
